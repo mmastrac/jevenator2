@@ -1,9 +1,6 @@
 # Jevenator 2: Judgement Day
 
-Region-scan object localisation on a diffusion LLM. An image is divided into an
-N×N labelled grid, the model answers one yes/no question per region in batched
-structured reads, and the box is the connected group of regions above threshold
-around the strongest one.
+Region-scan object localisation on a diffusion LLM.
 
 ## Run
 
