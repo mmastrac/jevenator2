@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jevenator 2</title>
+<style>
+:root{--bg:#0b0607;--panel:#160b0c;--line:#3a1b1a;--ink:#ffd9c0;--dim:#c08a72;
+--hot:#ffd23c;--warm:#ff7a3c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);padding:16px;
+font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+h1{font-size:18px;letter-spacing:.16em;margin:0 0 14px;color:var(--hot)}
+.wrap{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.panel{background:var(--panel);border:1px solid var(--line);padding:12px;border-radius:6px}
+#stage{position:relative;line-height:0}
+#stage img{display:block;width:100%;height:auto;
+filter:grayscale(1) sepia(1) saturate(6) hue-rotate(-24deg) contrast(1.15)}
+#scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(
+to bottom,rgba(0,0,0,0) 0 1px,rgba(0,0,0,.45) 1px 2px)}
+#box{position:absolute;border:3px solid var(--hot);display:none;pointer-events:none}
+#tag{position:absolute;background:var(--hot);color:#000;font-weight:700;
+padding:1px 6px;font-size:12px;display:none;white-space:nowrap}
+#cells{position:absolute;inset:0;pointer-events:none;display:none}
+#cells div{position:absolute;border:1px solid rgba(255,210,60,.2);font-size:10px;
+color:rgba(255,210,60,.75);padding:1px 2px}
+table{border-collapse:collapse}
+td{border:1px solid var(--line);width:46px;height:34px;text-align:center;font-size:11px;color:#fff}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+button,select,input[type=text]{background:#241011;color:var(--ink);
+border:1px solid var(--line);padding:5px 10px;border-radius:4px;font:inherit}
+button{cursor:pointer}button:hover{border-color:var(--hot)}
+input[type=range]{width:200px;accent-color:var(--hot)}
+.stat{color:var(--dim);font-size:12px}
+.stat b{color:var(--ink);font-weight:600}
+#live{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
+#err{color:#ff7060;font-size:12px;min-height:16px}
+</style>
+</head>
+<body>
+<h1>JEVENATOR 2 &mdash; JUDGEMENT DAY</h1>
+<div class="wrap">
+  <div class="panel" style="flex:1 1 430px;max-width:470px">
+    <div id="stage">
+      <img id="img" alt="">
+      <div id="cells"></div><div id="scan"></div><div id="box"></div><div id="tag"></div>
+    </div>
+    <div class="row">
+      <button id="play">PLAY</button>
+      <input type="range" id="seek" min="0" value="0">
+      <span class="stat" id="pos"></span>
+    </div>
+    <div class="row">
+      <label class="stat">MODE
+        <select id="mode">
+          <option value="single">single read</option>
+          <option value="averaged" selected>averaged</option>
+          <option value="prev">hint: previous frame</option>
+          <option value="wrong">hint: wrong</option>
+        </select>
+      </label>
+      <label class="stat">THR
+        <input type="range" id="thr" min="0.2" max="0.9" step="0.05" value="0.55" style="width:110px">
+        <span id="thrv">0.55</span>
+      </label>
+      <label class="stat"><input type="checkbox" id="grid"> regions</label>
+    </div>
+    <div class="stat" id="stats" style="margin-top:8px"></div>
+    <div id="live">
+      <div class="row">
+        <label class="stat">API <input type="text" id="api" size="22" placeholder="http://localhost:8020"></label>
+        <label class="stat">TARGET <input type="text" id="target" size="24"></label>
+        <button id="rescan">RESCAN FRAME</button>
+      </div>
+      <div id="err"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="stat" style="margin-bottom:6px">PER-REGION PROBABILITY</div>
+    <table id="tab"></table>
+  </div>
+</div>
+<script src="data/results.js"></script>
+<script>
+const D = window.RESULTS;
+const el = id => document.getElementById(id);
+const live = {};
+let i = 0, timer = null;
+
+function layout() {
+  const n = D.n, c = el("cells");
+  c.innerHTML = "";
+  for (let k = 0; k < n * n; k++) {
+    const r = Math.floor(k / n), col = k % n, d = document.createElement("div");
+    d.style.cssText = `left:${100*col/n}%;top:${100*r/n}%;width:${100/n}%;height:${100/n}%`;
+    d.textContent = D.labels[k];
+    c.appendChild(d);
+  }
+}
+function blob(p, thr) {
+  const n = D.n, on = [];
+  for (let k = 0; k < n * n; k++) if (p[D.labels[k]] >= thr) on.push(k);
+  if (!on.length) return [];
+  let start = on[0];
+  for (const k of on) if (p[D.labels[k]] > p[D.labels[start]]) start = k;
+  const seen = new Set([start]), st = [start];
+  while (st.length) {
+    const cur = st.pop(), r = Math.floor(cur / n), c = cur % n;
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      const rr = r + dr, cc = c + dc, nb = rr * n + cc;
+      if (rr >= 0 && rr < n && cc >= 0 && cc < n && on.includes(nb) && !seen.has(nb)) {
+        seen.add(nb); st.push(nb);
+      }
+    }
+  }
+  return [...seen];
+}
+function currentMap() {
+  return live[i] || D.modes[el("mode").value][i];
+}
+function draw() {
+  const n = D.n, thr = +el("thr").value, p = currentMap();
+  el("img").src = "data/frames/" + D.frames[i];
+  el("seek").max = D.frames.length - 1;
+  el("seek").value = i;
+  el("pos").textContent = `FRAME ${i + 1}/${D.frames.length}`;
+  el("cells").style.display = el("grid").checked ? "block" : "none";
+  const cells = blob(p, thr), b = el("box"), t = el("tag");
+  if (cells.length) {
+    const rows = cells.map(c => Math.floor(c / n)), cols = cells.map(c => c % n);
+    const x0 = Math.min(...cols), y0 = Math.min(...rows);
+    const x1 = Math.max(...cols) + 1, y1 = Math.max(...rows) + 1;
+    b.style.display = "block";
+    b.style.cssText += `;left:${100*x0/n}%;top:${100*y0/n}%;width:${100*(x1-x0)/n}%;height:${100*(y1-y0)/n}%`;
+    const conf = Math.max(...cells.map(c => p[D.labels[c]]));
+    t.style.display = "block";
+    t.style.left = (100 * x0 / n) + "%";
+    t.style.top = `calc(${100*y0/n}% - 19px)`;
+    t.textContent = `JOHN CONNOR ${(conf * 100).toFixed(0)}%`;
+  } else { b.style.display = "none"; t.style.display = "none"; }
+  let h = "";
+  for (let r = 0; r < n; r++) {
+    h += "<tr>";
+    for (let c = 0; c < n; c++) {
+      const L = D.labels[r * n + c], v = p[L], a = Math.min(1, v * 1.05);
+      h += `<td style="background:rgba(255,${Math.round(120+90*(1-a))},60,${a*0.85})">${L}<br>${v.toFixed(2)}</td>`;
+    }
+    h += "</tr>";
+  }
+  el("tab").innerHTML = h;
+  el("stats").innerHTML = `READ <b>${live[i] ? "live" : D.times[i].toFixed(0) + " ms"}</b>`
+    + ` &middot; REGIONS <b>${cells.length ? cells.map(c => D.labels[c]).sort().join("") : "none"}</b>`
+    + ` &middot; ${D.n * D.n} QUERIES`;
+}
+el("play").onclick = () => {
+  if (timer) { clearInterval(timer); timer = null; el("play").textContent = "PLAY"; }
+  else { timer = setInterval(() => { i = (i + 1) % D.frames.length; draw(); }, 420);
+         el("play").textContent = "PAUSE"; }
+};
+el("seek").oninput = e => { i = +e.target.value; draw(); };
+el("mode").onchange = draw;
+el("grid").onchange = draw;
+el("thr").oninput = e => { el("thrv").textContent = (+e.target.value).toFixed(2); draw(); };
+el("target").value = D.target;
+el("rescan").onclick = async () => {
+  const base = el("api").value.trim();
+  el("err").textContent = "";
+  if (!base) { el("err").textContent = "set an API address to scan live"; return; }
+  el("rescan").disabled = true;
+  try {
+    const r = await fetch(base.replace(/\/$/, "") + "/api/scan", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ frame: D.frames[i], target: el("target").value, n: D.n }),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    live[i] = (await r.json()).probs;
+    draw();
+  } catch (e) { el("err").textContent = String(e).slice(0, 200); }
+  finally { el("rescan").disabled = false; }
+};
+layout(); draw();
+</script>
+</body>
+</html>
