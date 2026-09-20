@@ -15,22 +15,29 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check the page and its data agree
-        run: python3 scripts/check_site.py
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
+      - run: python3 scripts/check_site.py
+
+  # Publishing is opt-in: set the repository variable ENABLE_PAGES to "true".
+  # Pages serves this repository's contents on the public web even while the
+  # repository itself is private, unless the plan supports private Pages.
   deploy:
-    needs: build
+    needs: check
+    if: vars.ENABLE_PAGES == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
       - id: deploy
         uses: actions/deploy-pages@v4
