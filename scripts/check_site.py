@@ -33,6 +33,9 @@ if ex:
                 assert os.path.isfile(ref_img), f"missing reference image: {name}"
                 assert set(r["probs"]) == set(cfg["labels"]), f"{scene}/{channel}/{name}: regions"
                 assert set(r["cells"]) <= set(cfg["labels"]), f"{scene}/{channel}/{name}: cells"
+                for g in r.get("groups", []):
+                    assert set(g) <= set(cfg["labels"]), f"{scene}/{channel}/{name}: group"
+                assert name in cfg["descriptions"], f"{scene}: {name} has no description"
     print(f"exemplar: {len(ex['scenes'])} scenes, "
           f"{sum(len(c['channels']) for c in ex['scenes'].values())} channel runs")
 
@@ -46,4 +49,6 @@ assert m.group(1) == stamp, (
 )
 if ex:
     assert 'id="match"' in page, "page has exemplar data but no match view"
+    assert 'id="mtargets"' in page, "match view has no target panel"
+    assert "mtab" not in page, "the match view's numeric grid should be gone"
 print(f"ok: {len(frames)} frames, {len(data['modes'])} modes, {data['n']}x{data['n']} grid")

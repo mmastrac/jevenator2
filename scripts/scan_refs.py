@@ -14,6 +14,15 @@ import regions
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 DATA = os.path.join(ROOT, "data")
 
+DESCRIPTIONS = {
+    "shape_triangle": "Red triangle. Control: a subject the model cannot mistake.",
+    "shape_circle": "Blue circle. Control: the other shape in the same scene.",
+    "john_daylight": "John Connor, lit, from a different scene.",
+    "john_photo": "John Connor, the photograph the film's own scan shows.",
+    "terminator": "The Terminator, cropped from this scene.",
+    "dyson": "Miles Dyson. Not in this scene at all.",
+}
+
 SCENES = {
     "shapes": {
         "n": 3,
@@ -40,7 +49,9 @@ def main():
         n = cfg["n"]
         img = Image.open(os.path.join(DATA, "scenes", f"{scene}.jpg"))
         out["scenes"][scene] = {"n": n, "labels": regions.labels(n),
-                                "truth": cfg["truth"], "channels": {}}
+                                "truth": cfg["truth"],
+                                "descriptions": {k: DESCRIPTIONS[k] for k in cfg["refs"]},
+                                "channels": {}}
         for channel in ("attached", "composited"):
             per_ref = {}
             for name in cfg["refs"]:
@@ -49,7 +60,8 @@ def main():
                          for s in seeds]
                 mean = {lab: round(statistics.mean(d[lab] for d in draws), 4)
                         for lab in regions.labels(n)}
-                cells = regions.blob(mean, n, args.threshold)
+                found = regions.groups(mean, n, args.threshold)
+                cells = found[0] if found else []
                 got = "".join(regions.labels(n)[c] for c in cells)
                 want = cfg["truth"][name]
                 if not want:
@@ -59,6 +71,7 @@ def main():
                 else:
                     outcome = "miss"
                 per_ref[name] = {"probs": mean, "cells": got, "truth": want,
+                                 "groups": ["".join(regions.labels(n)[c] for c in g) for g in found],
                                  "outcome": outcome, "hit": outcome in ("match", "rejected")}
                 print(f"  {scene:7s} {channel:11s} {name:16s} -> {got or 'none':6s} "
                       f"(want {want or 'none'})", flush=True)

@@ -30,7 +30,10 @@
       "cells": "B",
       "truth": "B",
       "hit": true,
-      "outcome": "match"
+      "outcome": "match",
+      "groups": [
+       "B"
+      ]
      },
      "shape_circle": {
       "probs": {
@@ -47,7 +50,10 @@
       "cells": "F",
       "truth": "F",
       "hit": true,
-      "outcome": "match"
+      "outcome": "match",
+      "groups": [
+       "F"
+      ]
      }
     },
     "composited": {
@@ -66,7 +72,10 @@
       "cells": "B",
       "truth": "B",
       "hit": true,
-      "outcome": "match"
+      "outcome": "match",
+      "groups": [
+       "B"
+      ]
      },
      "shape_circle": {
       "probs": {
@@ -83,9 +92,16 @@
       "cells": "F",
       "truth": "F",
       "hit": true,
-      "outcome": "match"
+      "outcome": "match",
+      "groups": [
+       "F"
+      ]
      }
     }
+   },
+   "descriptions": {
+    "shape_triangle": "Red triangle. Control: a subject the model cannot mistake.",
+    "shape_circle": "Blue circle. Control: the other shape in the same scene."
    }
   },
   "night": {
@@ -114,7 +130,10 @@
       "cells": "FI",
       "truth": "CFI",
       "hit": true,
-      "outcome": "match"
+      "outcome": "match",
+      "groups": [
+       "FI"
+      ]
      },
      "john_photo": {
       "probs": {
@@ -131,7 +150,11 @@
       "cells": "F",
       "truth": "CFI",
       "hit": true,
-      "outcome": "match"
+      "outcome": "match",
+      "groups": [
+       "F",
+       "D"
+      ]
      },
      "terminator": {
       "probs": {
@@ -148,7 +171,10 @@
       "cells": "BDEG",
       "truth": "DG",
       "hit": true,
-      "outcome": "match"
+      "outcome": "match",
+      "groups": [
+       "BDEG"
+      ]
      },
      "dyson": {
       "probs": {
@@ -165,7 +191,8 @@
       "cells": "",
       "truth": "",
       "hit": true,
-      "outcome": "rejected"
+      "outcome": "rejected",
+      "groups": []
      }
     },
     "composited": {
@@ -184,7 +211,10 @@
       "cells": "CFI",
       "truth": "CFI",
       "hit": true,
-      "outcome": "match"
+      "outcome": "match",
+      "groups": [
+       "CFI"
+      ]
      },
      "john_photo": {
       "probs": {
@@ -201,7 +231,11 @@
       "cells": "CFI",
       "truth": "CFI",
       "hit": true,
-      "outcome": "match"
+      "outcome": "match",
+      "groups": [
+       "CFI",
+       "D"
+      ]
      },
      "terminator": {
       "probs": {
@@ -218,7 +252,12 @@
       "cells": "DG",
       "truth": "DG",
       "hit": true,
-      "outcome": "match"
+      "outcome": "match",
+      "groups": [
+       "DG",
+       "I",
+       "C"
+      ]
      },
      "dyson": {
       "probs": {
@@ -235,9 +274,18 @@
       "cells": "DG",
       "truth": "",
       "hit": false,
-      "outcome": "false positive"
+      "outcome": "false positive",
+      "groups": [
+       "DG"
+      ]
      }
     }
+   },
+   "descriptions": {
+    "john_daylight": "John Connor, lit, from a different scene.",
+    "john_photo": "John Connor, the photograph the film's own scan shows.",
+    "terminator": "The Terminator, cropped from this scene.",
+    "dyson": "Miles Dyson. Not in this scene at all."
    }
   }
  }
