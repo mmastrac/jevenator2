@@ -1,9 +1,3 @@
-"""Serves the page and, when a DiffusionGemma structured server is reachable,
-scans a frame live.
-
-    DJEV_URL=http://127.0.0.1:8011 python3 server/app.py --port 8020
-"""
-
 import argparse
 import json
 import os
@@ -14,7 +8,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 FRAMES = os.path.join(ROOT, "data", "frames")
-
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
@@ -68,10 +61,9 @@ class Handler(SimpleHTTPRequestHandler):
                 seed=int(req.get("seed", 7)),
                 hint=req.get("hint"),
             )
-        except Exception as e:  # the upstream server is the likely failure
+        except Exception as e:
             return self._json(502, {"error": str(e)[:400]})
         return self._json(200, {"frame": name, "probs": probs})
-
 
 def main():
     ap = argparse.ArgumentParser()
@@ -80,7 +72,6 @@ def main():
     args = ap.parse_args()
     print(f"http://{args.host}:{args.port}  -> {os.environ.get('DJEV_URL', 'http://127.0.0.1:8011')}")
     ThreadingHTTPServer((args.host, args.port), Handler).serve_forever()
-
 
 if __name__ == "__main__":
     main()

@@ -1,13 +1,8 @@
-"""Pull frames out of a video with ffmpeg.
-
-    python3 scripts/extract_frames.py VIDEO 00:44:17 --seconds 12 --fps 2
-"""
 import argparse
 import os
 import subprocess
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-
 
 def main():
     ap = argparse.ArgumentParser()
@@ -30,7 +25,6 @@ def main():
         check=True,
     )
     print(f"{len(os.listdir(args.out))} frames -> {args.out}")
-
 
 if __name__ == "__main__":
     main()

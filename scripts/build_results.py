@@ -1,10 +1,9 @@
-"""Fold the raw scan output into the single file the page loads."""
 import json
 import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "server"))
-import regions  # noqa: E402
+import regions
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 DATA = os.path.join(ROOT, "data")
@@ -29,6 +28,10 @@ payload = {
         "wrong": [temporal["C_wrong"][n] for n in names],
     },
 }
+exemplar_path = os.path.join(DATA, "exemplar.json")
+if os.path.isfile(exemplar_path):
+    payload["exemplar"] = json.load(open(exemplar_path))
+
 out = os.path.join(DATA, "results.js")
 with open(out, "w") as f:
     f.write("window.RESULTS = " + json.dumps(payload) + ";\n")

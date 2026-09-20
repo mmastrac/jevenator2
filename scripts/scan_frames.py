@@ -1,7 +1,3 @@
-"""Scan every frame and write the raw maps the page is built from.
-
-    DJEV_URL=http://127.0.0.1:8011 python3 scripts/scan_frames.py
-"""
 import argparse
 import json
 import os
@@ -10,14 +6,13 @@ import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "server"))
 
-from PIL import Image  # noqa: E402
+from PIL import Image
 
-import gridscan  # noqa: E402
-import regions  # noqa: E402
+import gridscan
+import regions
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 FRAMES = os.path.join(ROOT, "data", "frames")
-
 
 def main():
     ap = argparse.ArgumentParser()
@@ -52,7 +47,6 @@ def main():
         print(f"  {arm} done", flush=True)
     json.dump(arms, open(os.path.join(ROOT, "data", "temporal.json"), "w"))
     print(f"mean {sum(times)/len(times):.0f} ms/frame over {len(times)} frames")
-
 
 if __name__ == "__main__":
     main()

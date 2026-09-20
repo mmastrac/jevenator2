@@ -33,13 +33,26 @@ button{cursor:pointer}button:hover{border-color:var(--hot)}
 input[type=range]{width:200px;accent-color:var(--hot)}
 .stat{color:var(--dim);font-size:12px}
 .stat b{color:var(--ink);font-weight:600}
+.tab{letter-spacing:.1em}
+.tab.on{background:var(--hot);color:#000;border-color:var(--hot);font-weight:700}
+#mrefs img{height:54px;width:auto;border:2px solid var(--line);cursor:pointer;
+border-radius:3px;display:block}
+#mrefs figure{margin:0;text-align:center}
+#mrefs figcaption{font-size:10px;color:var(--dim);margin-top:2px;max-width:76px;
+overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#mrefs .sel img{border-color:var(--hot)}
+.ok{color:#7fe08a}.bad{color:#ff7060}
 #live{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
 #err{color:#ff7060;font-size:12px;min-height:16px}
 </style>
 </head>
 <body>
 <h1>JEVENATOR 2 &mdash; JUDGMENT DAY</h1>
-<div class="wrap">
+<div class="row" style="margin:0 0 12px">
+  <button id="vTrack" class="tab on">TRACK</button>
+  <button id="vMatch" class="tab">MATCH</button>
+</div>
+<div class="wrap" id="track">
   <div class="panel" style="flex:1 1 430px;max-width:470px">
     <div id="stage">
       <img id="img" alt="">
@@ -78,6 +91,28 @@ input[type=range]{width:200px;accent-color:var(--hot)}
   <div class="panel">
     <div class="stat" style="margin-bottom:6px">PER-REGION PROBABILITY</div>
     <table id="tab"></table>
+  </div>
+</div>
+<div class="wrap" id="match" hidden>
+  <div class="panel" style="flex:1 1 430px;max-width:470px">
+    <div id="mstage" style="position:relative;line-height:0">
+      <img id="mimg" alt="">
+      <div id="mcells" style="position:absolute;inset:0;pointer-events:none"></div>
+      <div id="mbox" style="position:absolute;border:3px solid var(--hot);display:none"></div>
+    </div>
+    <div class="row">
+      <label class="stat">SCENE <select id="mscene"></select></label>
+      <label class="stat">CHANNEL <select id="mchan">
+        <option value="attached">attached</option>
+        <option value="composited">composited</option>
+      </select></label>
+    </div>
+    <div class="row" id="mrefs"></div>
+    <div class="stat" id="mstats" style="margin-top:8px"></div>
+  </div>
+  <div class="panel">
+    <div class="stat" style="margin-bottom:6px">PER-REGION PROBABILITY</div>
+    <table id="mtab"></table>
   </div>
 </div>
 <script src="data/results.js"></script>
@@ -178,6 +213,74 @@ el("rescan").onclick = async () => {
   } catch (e) { el("err").textContent = String(e).slice(0, 200); }
   finally { el("rescan").disabled = false; }
 };
+const EX = D.exemplar;
+let mscene = Object.keys(EX.scenes)[0], mref = null;
+
+function mdraw() {
+  const cfg = EX.scenes[mscene], n = cfg.n, labs = cfg.labels;
+  const refs = cfg.channels[el("mchan").value];
+  if (!mref || !(mref in refs)) mref = Object.keys(refs)[0];
+  el("mimg").src = "data/scenes/" + mscene + ".jpg";
+  const holder = el("mcells");
+  holder.innerHTML = "";
+  const r = refs[mref], p = r.probs;
+  for (let k = 0; k < n * n; k++) {
+    const row = Math.floor(k / n), col = k % n, v = p[labs[k]], d = document.createElement("div");
+    d.style.cssText = `position:absolute;left:${100*col/n}%;top:${100*row/n}%;`
+      + `width:${100/n}%;height:${100/n}%;border:1px solid rgba(255,210,60,.2);`
+      + `background:rgba(255,60,40,${(v*0.62).toFixed(3)});font-size:10px;`
+      + `color:rgba(255,230,190,.9);padding:1px 3px`;
+    d.textContent = labs[k];
+    holder.appendChild(d);
+  }
+  const cells = [...r.cells].map(c => labs.indexOf(c));
+  const b = el("mbox");
+  if (cells.length) {
+    const rows = cells.map(c => Math.floor(c / n)), cols = cells.map(c => c % n);
+    const x0 = Math.min(...cols), y0 = Math.min(...rows);
+    const x1 = Math.max(...cols) + 1, y1 = Math.max(...rows) + 1;
+    b.style.display = "block";
+    b.style.left = (100*x0/n)+"%"; b.style.top = (100*y0/n)+"%";
+    b.style.width = (100*(x1-x0)/n)+"%"; b.style.height = (100*(y1-y0)/n)+"%";
+  } else b.style.display = "none";
+
+  el("mrefs").innerHTML = "";
+  for (const name of Object.keys(refs)) {
+    const fig = document.createElement("figure");
+    fig.className = name === mref ? "sel" : "";
+    fig.innerHTML = `<img src="data/refs/${name}.jpg" alt="${name}">`
+      + `<figcaption>${name.replace(/_/g," ")}</figcaption>`;
+    fig.onclick = () => { mref = name; mdraw(); };
+    el("mrefs").appendChild(fig);
+  }
+  const want = r.truth || "none", got = r.cells || "none";
+  el("mstats").innerHTML = `REGIONS <b>${got}</b> &middot; EXPECTED <b>${want}</b> `
+    + `&middot; <span class="${r.hit ? "ok" : "bad"}">${r.hit ? "MATCH" : "MISS"}</span>`
+    + ` &middot; ${EX.seeds.length} SEEDS, THR ${EX.threshold}`;
+  let h = "";
+  for (let row = 0; row < n; row++) {
+    h += "<tr>";
+    for (let col = 0; col < n; col++) {
+      const L = labs[row*n+col], v = p[L], a = Math.min(1, v*1.05);
+      h += `<td style="background:rgba(255,${Math.round(120+90*(1-a))},60,${a*0.85})">${L}<br>${v.toFixed(2)}</td>`;
+    }
+    h += "</tr>";
+  }
+  el("mtab").innerHTML = h;
+}
+el("mscene").innerHTML = Object.keys(EX.scenes)
+  .map(k => `<option value="${k}">${k}</option>`).join("");
+el("mscene").onchange = e => { mscene = e.target.value; mref = null; mdraw(); };
+el("mchan").onchange = mdraw;
+function view(match) {
+  el("track").hidden = match; el("match").hidden = !match;
+  el("vTrack").classList.toggle("on", !match);
+  el("vMatch").classList.toggle("on", match);
+  if (match) mdraw();
+}
+el("vTrack").onclick = () => view(false);
+el("vMatch").onclick = () => view(true);
+
 layout(); draw();
 </script>
 </body>

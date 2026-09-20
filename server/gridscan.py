@@ -1,5 +1,3 @@
-"""Grid region scan against a DiffusionGemma structured-decision server."""
-
 import base64
 import http.client
 import io
@@ -9,12 +7,11 @@ from urllib.parse import urlparse
 
 from PIL import Image, ImageDraw, ImageFont
 
-from regions import blob, box, labels, smooth  # noqa: F401
+from regions import blob, box, labels, smooth
 
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXY"
 DJEV_URL = os.environ.get("DJEV_URL", "http://127.0.0.1:8011")
-BATCH = 9  # past ten questions the server picks a format whose noul labels are multi-token
-
+BATCH = 9
 
 def _font(size):
     for path in (
@@ -27,9 +24,7 @@ def _font(size):
             continue
     return ImageFont.load_default(size=size)
 
-
 def overlay(im, n):
-    """Draw the labelled grid the model is asked about."""
     out = im.convert("RGB").copy()
     d = ImageDraw.Draw(out)
     w, h = out.size
@@ -45,30 +40,84 @@ def overlay(im, n):
         d.text((x + 4, y + 2), lab, fill=(255, 255, 0), font=font)
     return out
 
+def band(scene, ref, n, caption="REFERENCE"):
+    scene = scene.convert("RGB")
+    w, h = scene.size
+    height = 120
+    thumb = ref.convert("RGB").copy()
+    thumb.thumbnail((height - 20, height - 20))
+    out = Image.new("RGB", (w, h + height), (20, 20, 20))
+    out.paste(thumb, (10, 10))
+    d = ImageDraw.Draw(out)
+    d.rectangle([9, 9, 10 + thumb.size[0], 10 + thumb.size[1]], outline=(255, 255, 0), width=2)
+    d.text((thumb.size[0] + 26, 24), caption, fill=(255, 255, 0), font=_font(20))
+    out.paste(overlay(scene, n), (0, height))
+    return out
 
-def scan(im, target, n=5, seed=7, hint=None):
-    """Per-region yes/no for one image. Returns label -> probability."""
+def scan(im, target, n=5, seed=7, hint=None, reference=None, channel="attached"):
+    composited = reference is not None and channel == "composited"
+    if composited:
+        scene_img = band(im, reference, n)
+    else:
+        scene_img = overlay(im, n)
     buf = io.BytesIO()
-    overlay(im, n).save(buf, "PNG")
+    scene_img.save(buf, "PNG")
     url = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
     text = f"A photograph divided into {n * n} labelled regions."
+    if composited:
+        text = ("A reference subject in the band at the top, and below it a photograph "
+                f"divided into {n * n} labelled regions.")
     if hint:
         text += f" In the previous frame the subject was found in regions {hint}."
 
+    attached = reference is not None and channel == "attached"
+    if attached:
+        headline = "Report which labelled regions of the second image contain the subject of the first image."
+
+        def question(c):
+            return f"Does region {c} of the second image contain the subject shown in the first image?"
+    elif composited:
+        headline = "Report which labelled regions contain the subject shown in the reference band."
+
+        def question(c):
+            return f"Does the region labelled {c} contain the subject shown in the reference band?"
+    else:
+        headline = f"Report which labelled regions contain {target}."
+
+        def question(c):
+            return f"Does the region labelled {c} contain {target}?"
+
     parsed = urlparse(DJEV_URL)
+    if attached:
+        rbuf = io.BytesIO()
+        reference.convert("RGB").save(rbuf, "PNG")
+        rurl = "data:image/png;base64," + base64.b64encode(rbuf.getvalue()).decode()
+        parts = [
+            {"type": "text", "text": "First image, the reference subject:"},
+            {"type": "image_url", "image_url": {"url": rurl}},
+            {"type": "text", "text": "Second image, " + text[0].lower() + text[1:]},
+            {"type": "image_url", "image_url": {"url": url}},
+        ]
+    else:
+        parts = [
+            {"type": "text", "text": text},
+            {"type": "image_url", "image_url": {"url": url}},
+        ]
+
     conn = http.client.HTTPConnection(parsed.hostname, parsed.port or 80, timeout=300)
     probs = {}
     try:
         for i in range(0, n * n, BATCH):
             group = labels(n)[i : i + BATCH]
             schema = {
-                "instructions": f"Report which labelled regions contain {target}.",
+                "instructions": headline,
                 "samples": 1,
                 "questions": [
                     {
                         "id": c,
                         "type": "noul",
-                        "instructions": f"Does the region labelled {c} contain {target}?",
+                        "instructions": question(c),
                     }
                     for c in group
                 ],
@@ -78,13 +127,7 @@ def scan(im, target, n=5, seed=7, hint=None):
                     "seed": seed,
                     "messages": [
                         {"role": "system", "content": json.dumps(schema)},
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": text},
-                                {"type": "image_url", "image_url": {"url": url}},
-                            ],
-                        },
+                        {"role": "user", "content": parts},
                     ],
                 }
             ).encode()
