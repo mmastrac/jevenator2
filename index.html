@@ -13,7 +13,8 @@ font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 h1{font-size:18px;letter-spacing:.16em;margin:0 0 14px;color:var(--hot)}
 .wrap{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
 .panel{background:var(--panel);border:1px solid var(--line);padding:12px;border-radius:6px}
-#stage{position:relative;line-height:0}
+#stage,#mstage{position:relative;line-height:0}
+#stage *,#mstage *{line-height:normal}
 #mstage img{display:block;width:100%;height:auto}
 #stage img{display:block;width:100%;height:auto;
 filter:grayscale(1) sepia(1) saturate(6) hue-rotate(-24deg) contrast(1.15)}
@@ -21,10 +22,11 @@ filter:grayscale(1) sepia(1) saturate(6) hue-rotate(-24deg) contrast(1.15)}
 to bottom,rgba(0,0,0,0) 0 1px,rgba(0,0,0,.45) 1px 2px)}
 #box{position:absolute;border:3px solid var(--hot);display:none;pointer-events:none}
 #tag{position:absolute;background:var(--hot);color:#000;font-weight:700;
-padding:1px 6px;font-size:12px;display:none;white-space:nowrap}
+padding:3px 8px;font-size:15px;line-height:1.35;display:none;white-space:nowrap;
+border-radius:2px}
 #cells{position:absolute;inset:0;pointer-events:none;display:none}
-#cells div{position:absolute;border:1px solid rgba(255,210,60,.2);font-size:10px;
-color:rgba(255,210,60,.75);padding:1px 2px}
+#cells div{position:absolute;border:1px solid rgba(255,210,60,.2);font-size:11px;
+line-height:1.5;color:rgba(255,210,60,.75);padding:1px 3px}
 table{border-collapse:collapse}
 td{border:1px solid var(--line);width:46px;height:34px;text-align:center;font-size:11px;color:#fff}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
@@ -99,7 +101,7 @@ background:#1d0e0f}
 </div>
 <div class="wrap" id="match" hidden>
   <div class="panel" style="flex:1 1 430px;max-width:470px">
-    <div id="mstage" style="position:relative;line-height:0">
+    <div id="mstage">
       <img id="mimg" alt="">
       <div id="mcells" style="position:absolute;inset:0;pointer-events:none"></div>
       <div id="mbox" style="position:absolute;border:3px solid var(--hot);display:none"></div>
@@ -173,7 +175,7 @@ function draw() {
     const conf = Math.max(...cells.map(c => p[D.labels[c]]));
     t.style.display = "block";
     t.style.left = (100 * x0 / n) + "%";
-    t.style.top = `calc(${100*y0/n}% - 19px)`;
+    t.style.top = `calc(${100*y0/n}% - 25px)`;
     t.textContent = `JOHN CONNOR ${(conf * 100).toFixed(0)}%`;
   } else { b.style.display = "none"; t.style.display = "none"; }
   let h = "";
