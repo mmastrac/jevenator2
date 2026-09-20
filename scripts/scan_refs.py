@@ -17,10 +17,10 @@ DATA = os.path.join(ROOT, "data")
 DESCRIPTIONS = {
     "shape_triangle": "Red triangle. Control: a subject the model cannot mistake.",
     "shape_circle": "Blue circle. Control: the other shape in the same scene.",
-    "john_daylight": "John Connor, lit, from a different scene.",
-    "john_photo": "John Connor, the photograph the film's own scan shows.",
-    "terminator": "The Terminator, cropped from this scene.",
-    "dyson": "Miles Dyson. Not in this scene at all.",
+    "john_daylight": "John Connor, lit reference.",
+    "john_photo": "John Connor, reference.",
+    "terminator": "The Terminator.",
+    "dyson": "Miles Dyson.",
 }
 
 SCENES = {

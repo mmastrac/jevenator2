@@ -16,7 +16,8 @@ With the API, for live scans:
 DJEV_URL=http://127.0.0.1:8011 python3 server/app.py --port 8020
 ```
 
-Then put `http://localhost:8020` in the API field.
+Then put `http://localhost:8020` in the API field and press rescan. The
+rescan uses whichever target is selected.
 
 ## Regenerate
 
@@ -54,6 +55,9 @@ python3 scripts/build_results.py
 | `prev` | previous frame's regions supplied in the prompt |
 | `wrong` | a fixed region group the subject is not in |
 | `reference` | a reference photo instead of a description, one entry per target |
+
+Targets are picked by card: the first is the text description, the rest are
+reference photos.
 
 `wrong` is the control for `prev`. Requires Pillow for live scanning; the cached
 viewer needs nothing.

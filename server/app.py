@@ -53,13 +53,24 @@ class Handler(SimpleHTTPRequestHandler):
         except ImportError as e:
             return self._json(503, {"error": f"live scanning needs Pillow: {e}"})
 
+        reference = None
+        ref_name = req.get("reference")
+        if ref_name:
+            ref_path = os.path.join(ROOT, "data", "refs", os.path.basename(ref_name) + ".jpg")
+            if not os.path.isfile(ref_path):
+                return self._json(400, {"error": f"no such reference: {ref_name!r}"})
+            reference = Image.open(ref_path)
+
         try:
             probs = gridscan.scan(
                 Image.open(path),
-                req.get("target") or "a boy with light blond hair",
-                n=int(req.get("n", 5)),
+                req.get("target") or "",
+                cols=int(req.get("cols", 5)),
+                rows=int(req.get("rows", req.get("cols", 5))),
                 seed=int(req.get("seed", 7)),
                 hint=req.get("hint"),
+                reference=reference,
+                channel=req.get("channel", "attached"),
             )
         except Exception as e:
             return self._json(502, {"error": str(e)[:400]})
