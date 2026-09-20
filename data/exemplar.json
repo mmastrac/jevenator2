@@ -29,7 +29,8 @@
       },
       "cells": "B",
       "truth": "B",
-      "hit": true
+      "hit": true,
+      "outcome": "match"
      },
      "shape_circle": {
       "probs": {
@@ -45,7 +46,8 @@
       },
       "cells": "F",
       "truth": "F",
-      "hit": true
+      "hit": true,
+      "outcome": "match"
      }
     },
     "composited": {
@@ -63,7 +65,8 @@
       },
       "cells": "B",
       "truth": "B",
-      "hit": true
+      "hit": true,
+      "outcome": "match"
      },
      "shape_circle": {
       "probs": {
@@ -79,7 +82,8 @@
       },
       "cells": "F",
       "truth": "F",
-      "hit": true
+      "hit": true,
+      "outcome": "match"
      }
     }
    }
@@ -109,7 +113,8 @@
       },
       "cells": "FI",
       "truth": "CFI",
-      "hit": true
+      "hit": true,
+      "outcome": "match"
      },
      "john_photo": {
       "probs": {
@@ -125,7 +130,8 @@
       },
       "cells": "F",
       "truth": "CFI",
-      "hit": true
+      "hit": true,
+      "outcome": "match"
      },
      "terminator": {
       "probs": {
@@ -141,7 +147,8 @@
       },
       "cells": "BDEG",
       "truth": "DG",
-      "hit": true
+      "hit": true,
+      "outcome": "match"
      },
      "dyson": {
       "probs": {
@@ -157,7 +164,8 @@
       },
       "cells": "",
       "truth": "",
-      "hit": false
+      "hit": true,
+      "outcome": "rejected"
      }
     },
     "composited": {
@@ -175,7 +183,8 @@
       },
       "cells": "CFI",
       "truth": "CFI",
-      "hit": true
+      "hit": true,
+      "outcome": "match"
      },
      "john_photo": {
       "probs": {
@@ -191,7 +200,8 @@
       },
       "cells": "CFI",
       "truth": "CFI",
-      "hit": true
+      "hit": true,
+      "outcome": "match"
      },
      "terminator": {
       "probs": {
@@ -207,7 +217,8 @@
       },
       "cells": "DG",
       "truth": "DG",
-      "hit": true
+      "hit": true,
+      "outcome": "match"
      },
      "dyson": {
       "probs": {
@@ -223,7 +234,8 @@
       },
       "cells": "DG",
       "truth": "",
-      "hit": false
+      "hit": false,
+      "outcome": "false positive"
      }
     }
    }

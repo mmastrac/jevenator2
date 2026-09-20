@@ -116,7 +116,7 @@ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     <table id="mtab"></table>
   </div>
 </div>
-<script src="data/results.js?v=7243e14d"></script>
+<script src="data/results.js?v=90b241d8"></script>
 <script>
 const D = window.RESULTS;
 const el = id => document.getElementById(id);
@@ -256,7 +256,7 @@ function mdraw() {
   }
   const want = r.truth || "none", got = r.cells || "none";
   el("mstats").innerHTML = `REGIONS <b>${got}</b> &middot; EXPECTED <b>${want}</b> `
-    + `&middot; <span class="${r.hit ? "ok" : "bad"}">${r.hit ? "MATCH" : "MISS"}</span>`
+    + `&middot; <span class="${r.hit ? "ok" : "bad"}">${(r.outcome || "").toUpperCase()}</span>`
     + ` &middot; ${EX.seeds.length} SEEDS, THR ${EX.threshold}`;
   let h = "";
   for (let row = 0; row < n; row++) {

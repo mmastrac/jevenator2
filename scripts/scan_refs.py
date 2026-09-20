@@ -52,8 +52,14 @@ def main():
                 cells = regions.blob(mean, n, args.threshold)
                 got = "".join(regions.labels(n)[c] for c in cells)
                 want = cfg["truth"][name]
-                hit = bool(got) and bool(want) and bool(set(got) & set(want))
-                per_ref[name] = {"probs": mean, "cells": got, "truth": want, "hit": hit}
+                if not want:
+                    outcome = "rejected" if not got else "false positive"
+                elif got and set(got) & set(want):
+                    outcome = "match"
+                else:
+                    outcome = "miss"
+                per_ref[name] = {"probs": mean, "cells": got, "truth": want,
+                                 "outcome": outcome, "hit": outcome in ("match", "rejected")}
                 print(f"  {scene:7s} {channel:11s} {name:16s} -> {got or 'none':6s} "
                       f"(want {want or 'none'})", flush=True)
             out["scenes"][scene]["channels"][channel] = per_ref
