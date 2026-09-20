@@ -1,4 +1,4 @@
-# Jevenator 2: Judgement Day
+# Jevenator 2: Judgment Day
 
 Region-scan object localisation on a diffusion LLM.
 
