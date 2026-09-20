@@ -11,13 +11,22 @@ import regions
 src = open(os.path.join(ROOT, "data", "results.js")).read()
 data = json.loads(re.match(r"\s*window\.RESULTS\s*=\s*(\{.*\});\s*$", src, re.S).group(1))
 
-assert data["labels"] == regions.labels(data["n"]), "label set does not match the grid"
+assert data["labels"] == regions.labels(data["cols"], data["rows"]), "label set does not match the grid"
 frames = data["frames"]
 for mode, maps in data["modes"].items():
     assert len(maps) == len(frames), f"{mode}: {len(maps)} maps for {len(frames)} frames"
     for m in maps:
         assert set(m) == set(data["labels"]), f"{mode}: region set mismatch"
 assert len(data["times"]) == len(frames), "timing count does not match frames"
+refs = data.get("refs", {})
+for name, r in refs.items():
+    assert os.path.isfile(os.path.join(ROOT, "data", "refs", f"{name}.jpg")), f"missing reference image: {name}"
+    for mode, maps in r["modes"].items():
+        assert len(maps) == len(frames), f"ref {name}/{mode}: {len(maps)} maps for {len(frames)} frames"
+        for m in maps:
+            assert set(m) == set(data["labels"]), f"ref {name}/{mode}: region set"
+if refs:
+    assert 'id="targets"' in open(os.path.join(ROOT, "index.html")).read(), "no target panel"
 missing = [f for f in frames if not os.path.isfile(os.path.join(ROOT, "data", "frames", f))]
 assert not missing, f"missing frame files: {missing[:5]}"
 
@@ -48,4 +57,5 @@ assert m.group(1) == stamp, (
     f"page asks for results.js?v={m.group(1)} but the data hashes to {stamp}; "
     "run scripts/build_results.py"
 )
-print(f"ok: {len(frames)} frames, {len(data['modes'])} modes, {data['n']}x{data['n']} grid")
+print(f"ok: {len(frames)} frames, {len(data['modes'])} modes, "
+      f"{len(refs)} reference tracks, {data['cols']}x{data['rows']} grid")

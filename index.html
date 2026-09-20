@@ -35,6 +35,14 @@ button{cursor:pointer}button:hover{border-color:var(--hot)}
 input[type=range]{width:200px;accent-color:var(--hot)}
 .stat{color:var(--dim);font-size:12px}
 .stat b{color:var(--ink);font-weight:600}
+#targets figure{margin:0 0 10px;display:flex;gap:10px;align-items:flex-start;
+cursor:pointer;border:1px solid var(--line);border-radius:4px;padding:7px;
+background:#1d0e0f}
+#targets figure:hover{border-color:var(--warm)}
+#targets .sel{border-color:var(--hot);background:#2a1414}
+#targets img{height:58px;width:auto;border-radius:3px;display:block;flex:0 0 auto}
+#targets figcaption{font-size:11px;color:var(--dim);line-height:1.35}
+#targets .nm{color:var(--ink);font-weight:600;display:block;margin-bottom:2px}
 #live{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
 #err{color:#ff7060;font-size:12px;min-height:16px}
 </style>
@@ -59,6 +67,7 @@ input[type=range]{width:200px;accent-color:var(--hot)}
           <option value="averaged" selected>averaged</option>
           <option value="prev">hint: previous frame</option>
           <option value="wrong">hint: wrong</option>
+          <optgroup id="refopts" label="reference"></optgroup>
         </select>
       </label>
       <label class="stat">THR
@@ -81,8 +90,12 @@ input[type=range]{width:200px;accent-color:var(--hot)}
     <div class="stat" style="margin-bottom:6px">PER-REGION PROBABILITY</div>
     <table id="tab"></table>
   </div>
+  <div class="panel" id="tpanel" style="flex:1 1 280px;max-width:340px">
+    <div class="stat" style="margin-bottom:8px">TARGET</div>
+    <div id="targets"></div>
+  </div>
 </div>
-<script src="data/results.js?v=e6a7bc46"></script>
+<script src="data/results.js?v=f78cde3e"></script>
 <script>
 const D = window.RESULTS;
 const el = id => document.getElementById(id);
@@ -90,69 +103,128 @@ const live = {};
 let i = 0, timer = null;
 
 function layout() {
-  const n = D.n, c = el("cells");
+  const {cols, rows} = D, c = el("cells");
   c.innerHTML = "";
-  for (let k = 0; k < n * n; k++) {
-    const r = Math.floor(k / n), col = k % n, d = document.createElement("div");
-    d.style.cssText = `left:${100*col/n}%;top:${100*r/n}%;width:${100/n}%;height:${100/n}%`;
+  for (let k = 0; k < cols * rows; k++) {
+    const r = Math.floor(k / cols), col = k % cols, d = document.createElement("div");
+    d.style.cssText = `left:${100*col/cols}%;top:${100*r/rows}%;width:${100/cols}%;height:${100/rows}%`;
     d.textContent = D.labels[k];
     c.appendChild(d);
   }
 }
-function blob(p, thr) {
-  const n = D.n, on = [];
-  for (let k = 0; k < n * n; k++) if (p[D.labels[k]] >= thr) on.push(k);
-  if (!on.length) return [];
-  let start = on[0];
-  for (const k of on) if (p[D.labels[k]] > p[D.labels[start]]) start = k;
-  const seen = new Set([start]), st = [start];
-  while (st.length) {
-    const cur = st.pop(), r = Math.floor(cur / n), c = cur % n;
-    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
-      const rr = r + dr, cc = c + dc, nb = rr * n + cc;
-      if (rr >= 0 && rr < n && cc >= 0 && cc < n && on.includes(nb) && !seen.has(nb)) {
-        seen.add(nb); st.push(nb);
-      }
-    }
+function nbrs(i) {
+  const {cols, rows} = D, r = Math.floor(i / cols), c = i % cols, out = [];
+  for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+    const rr = r + dr, cc = c + dc;
+    if ((dr || dc) && rr >= 0 && rr < rows && cc >= 0 && cc < cols) out.push(rr * cols + cc);
   }
-  return [...seen];
+  return out;
+}
+function connected(set) {
+  if (set.size < 2) return true;
+  const start = set.values().next().value, seen = new Set([start]), st = [start];
+  while (st.length) for (const nb of nbrs(st.pop())) if (set.has(nb) && !seen.has(nb)) { seen.add(nb); st.push(nb); }
+  return seen.size === set.size;
+}
+function groups(p, thr) {
+  const {cols, rows, labels} = D, on = new Set();
+  for (let k = 0; k < cols * rows; k++) if (p[labels[k]] >= thr) on.add(k);
+  if (!on.size) return [];
+  const out = [], remaining = new Set(on);
+  while (remaining.size) {
+    let start = null;
+    for (const k of remaining) if (start === null || p[labels[k]] > p[labels[start]]) start = k;
+    const seen = new Set([start]), st = [start];
+    while (st.length) for (const nb of nbrs(st.pop())) if (remaining.has(nb) && !seen.has(nb)) { seen.add(nb); st.push(nb); }
+    const rs = [...seen].map(i => Math.floor(i / cols)), cs = [...seen].map(i => i % cols);
+    const inside = [];
+    for (let r = Math.min(...rs); r <= Math.max(...rs); r++)
+      for (let c = Math.min(...cs); c <= Math.max(...cs); c++) inside.push(r * cols + c);
+    const keep = new Set(seen);
+    for (const cell of inside.filter(i => !on.has(i)).sort((a, b) => p[labels[b]] - p[labels[a]])) {
+      if (connected(keep)) break;
+      keep.add(cell);
+    }
+    out.push([...keep].sort((a, b) => a - b));
+    for (const k of seen) remaining.delete(k);
+  }
+  return out;
 }
 function currentMap() {
-  return live[i] || D.modes[el("mode").value][i];
+  if (live[i]) return live[i];
+  const m = el("mode").value;
+  if (m.startsWith("ref:")) {
+    const [, name, sub] = m.split(":");
+    return D.refs[name].modes[sub][i];
+  }
+  return D.modes[m][i];
 }
 function draw() {
-  const n = D.n, thr = +el("thr").value, p = currentMap();
+  const {cols, rows, labels} = D, thr = +el("thr").value, p = currentMap();
   el("img").src = "data/frames/" + D.frames[i];
   el("seek").max = D.frames.length - 1;
   el("seek").value = i;
   el("pos").textContent = `FRAME ${i + 1}/${D.frames.length}`;
   el("cells").style.display = el("grid").checked ? "block" : "none";
-  const cells = blob(p, thr), b = el("box"), t = el("tag");
-  if (cells.length) {
-    const rows = cells.map(c => Math.floor(c / n)), cols = cells.map(c => c % n);
-    const x0 = Math.min(...cols), y0 = Math.min(...rows);
-    const x1 = Math.max(...cols) + 1, y1 = Math.max(...rows) + 1;
-    b.style.display = "block";
-    b.style.cssText += `;left:${100*x0/n}%;top:${100*y0/n}%;width:${100*(x1-x0)/n}%;height:${100*(y1-y0)/n}%`;
-    const conf = Math.max(...cells.map(c => p[D.labels[c]]));
-    t.style.display = "block";
-    t.style.left = (100 * x0 / n) + "%";
-    t.style.top = `calc(${100*y0/n}% - 25px)`;
-    t.textContent = `JOHN CONNOR ${(conf * 100).toFixed(0)}%`;
-  } else { b.style.display = "none"; t.style.display = "none"; }
+  for (const old of [...document.querySelectorAll(".gbox")]) old.remove();
+  const found = groups(p, thr), t = el("tag");
+  found.forEach((g, gi) => {
+    const rs = g.map(c => Math.floor(c / cols)), cs = g.map(c => c % cols);
+    const x0 = Math.min(...cs), y0 = Math.min(...rs);
+    const x1 = Math.max(...cs) + 1, y1 = Math.max(...rs) + 1;
+    const d = document.createElement("div");
+    d.className = "gbox";
+    d.style.cssText = `position:absolute;left:${100*x0/cols}%;top:${100*y0/rows}%;`
+      + `width:${100*(x1-x0)/cols}%;height:${100*(y1-y0)/rows}%;pointer-events:none;`
+      + `border:${gi ? "2px dashed rgba(255,210,60,.45)" : "3px solid var(--hot)"}`;
+    el("stage").appendChild(d);
+    if (!gi) {
+      const conf = Math.max(...g.map(c => p[labels[c]]));
+      t.style.display = "block";
+      t.style.left = (100 * x0 / cols) + "%";
+      t.style.top = `calc(${100*y0/rows}% - 25px)`;
+      t.textContent = `${targetName()} ${(conf * 100).toFixed(0)}%`;
+    }
+  });
+  if (!found.length) t.style.display = "none";
   let h = "";
-  for (let r = 0; r < n; r++) {
+  for (let r = 0; r < rows; r++) {
     h += "<tr>";
-    for (let c = 0; c < n; c++) {
-      const L = D.labels[r * n + c], v = p[L], a = Math.min(1, v * 1.05);
+    for (let c = 0; c < cols; c++) {
+      const L = labels[r * cols + c], v = p[L], a = Math.min(1, v * 1.05);
       h += `<td style="background:rgba(255,${Math.round(120+90*(1-a))},60,${a*0.85})">${L}<br>${v.toFixed(2)}</td>`;
     }
     h += "</tr>";
   }
   el("tab").innerHTML = h;
-  el("stats").innerHTML = `READ <b>${live[i] ? "live" : D.times[i].toFixed(0) + " ms"}</b>`
-    + ` &middot; REGIONS <b>${cells.length ? cells.map(c => D.labels[c]).sort().join("") : "none"}</b>`
-    + ` &middot; ${D.n * D.n} QUERIES`;
+  const cells = found.length ? found[0].map(c => labels[c]).join("") : "none";
+  el("stats").innerHTML = `READ <b>${live[i] ? "live" : readMs().toFixed(0) + " ms"}</b>`
+    + ` &middot; REGIONS <b>${cells}</b> &middot; ${cols * rows} QUERIES`;
+  paintTargets();
+}
+function targetName() {
+  const m = el("mode").value;
+  return m.startsWith("ref:") ? m.split(":")[1].replace(/_/g, " ").toUpperCase() : "JOHN CONNOR";
+}
+function readMs() {
+  const m = el("mode").value;
+  return m.startsWith("ref:") ? D.refs[m.split(":")[1]].ms : D.times[i];
+}
+function paintTargets() {
+  const host = el("targets");
+  if (!host || !D.refs) return;
+  const m = el("mode").value;
+  host.innerHTML = "";
+  for (const name of Object.keys(D.refs)) {
+    const sel = m === `ref:${name}:averaged`;
+    const fig = document.createElement("figure");
+    fig.className = sel ? "sel" : "";
+    fig.innerHTML = `<img src="data/refs/${name}.jpg" alt="${name}">`
+      + `<figcaption><span class="nm">${name.replace(/_/g, " ")}</span>`
+      + `${D.refs[name].description || ""}</figcaption>`;
+    fig.onclick = () => { el("mode").value = `ref:${name}:averaged`; draw(); };
+    host.appendChild(fig);
+  }
 }
 el("play").onclick = () => {
   if (timer) { clearInterval(timer); timer = null; el("play").textContent = "PLAY"; }
@@ -180,6 +252,10 @@ el("rescan").onclick = async () => {
   } catch (e) { el("err").textContent = String(e).slice(0, 200); }
   finally { el("rescan").disabled = false; }
 };
+if (D.refs) {
+  el("refopts").innerHTML = Object.keys(D.refs)
+    .map(n => `<option value="ref:${n}:averaged">${n.replace(/_/g, " ")}</option>`).join("");
+}
 layout(); draw();
 </script>
 </body>

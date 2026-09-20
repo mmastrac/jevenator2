@@ -17,9 +17,10 @@ FRAMES = os.path.join(ROOT, "data", "frames")
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--target", default="a boy with light blond hair")
-    ap.add_argument("--n", type=int, default=5)
+    ap.add_argument("--cols", type=int, default=5)
+    ap.add_argument("--rows", type=int, default=5)
     ap.add_argument("--threshold", type=float, default=0.55)
-    ap.add_argument("--wrong-hint", default="G, L, Q",
+    ap.add_argument("--wrong-hint", default="",
                     help="control: a region group the subject is not in")
     args = ap.parse_args()
 
@@ -28,10 +29,10 @@ def main():
     for name in names:
         t = time.perf_counter()
         im = Image.open(os.path.join(FRAMES, name))
-        maps[name] = gridscan.scan(im, args.target, n=args.n)
+        maps[name] = gridscan.scan(im, args.target, cols=args.cols, rows=args.rows)
         times.append((time.perf_counter() - t) * 1e3)
         print(f"  {name}  {times[-1]:6.0f} ms", flush=True)
-    json.dump({"maps": maps, "times": times},
+    json.dump({"maps": maps, "times": times, "cols": args.cols, "rows": args.rows},
               open(os.path.join(ROOT, "data", "maps.json"), "w"))
 
     arms = {}
@@ -40,9 +41,9 @@ def main():
         for name in names:
             hint = args.wrong_hint if arm == "C_wrong" else prev
             im = Image.open(os.path.join(FRAMES, name))
-            out[name] = gridscan.scan(im, args.target, n=args.n, hint=hint)
-            cells = regions.blob(out[name], args.n, args.threshold)
-            prev = ", ".join(regions.labels(args.n)[c] for c in cells) or None
+            out[name] = gridscan.scan(im, args.target, cols=args.cols, rows=args.rows, hint=hint)
+            cells = regions.blob(out[name], args.cols, args.rows, args.threshold)
+            prev = ", ".join(regions.labels(args.cols, args.rows)[c] for c in cells) or None
         arms[arm] = out
         print(f"  {arm} done", flush=True)
     json.dump(arms, open(os.path.join(ROOT, "data", "temporal.json"), "w"))

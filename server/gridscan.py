@@ -24,23 +24,24 @@ def _font(size):
             continue
     return ImageFont.load_default(size=size)
 
-def overlay(im, n):
+def overlay(im, cols, rows):
     out = im.convert("RGB").copy()
     d = ImageDraw.Draw(out)
     w, h = out.size
-    cw, ch = w / n, h / n
+    cw, ch = w / cols, h / rows
     font = _font(15)
-    for i in range(1, n):
+    for i in range(1, cols):
         d.line([(i * cw, 0), (i * cw, h)], fill=(255, 255, 0), width=2)
+    for i in range(1, rows):
         d.line([(0, i * ch), (w, i * ch)], fill=(255, 255, 0), width=2)
-    for idx, lab in enumerate(labels(n)):
-        r, c = divmod(idx, n)
+    for idx, lab in enumerate(labels(cols, rows)):
+        r, c = divmod(idx, cols)
         x, y = c * cw + 3, r * ch + 2
         d.rectangle([x, y, x + 20, y + 20], fill=(0, 0, 0))
         d.text((x + 4, y + 2), lab, fill=(255, 255, 0), font=font)
     return out
 
-def band(scene, ref, n, caption="REFERENCE"):
+def band(scene, ref, cols, rows, caption="REFERENCE"):
     scene = scene.convert("RGB")
     w, h = scene.size
     height = 120
@@ -51,23 +52,25 @@ def band(scene, ref, n, caption="REFERENCE"):
     d = ImageDraw.Draw(out)
     d.rectangle([9, 9, 10 + thumb.size[0], 10 + thumb.size[1]], outline=(255, 255, 0), width=2)
     d.text((thumb.size[0] + 26, 24), caption, fill=(255, 255, 0), font=_font(20))
-    out.paste(overlay(scene, n), (0, height))
+    out.paste(overlay(scene, cols, rows), (0, height))
     return out
 
-def scan(im, target, n=5, seed=7, hint=None, reference=None, channel="attached"):
+def scan(im, target, cols=5, rows=None, seed=7, hint=None, reference=None, channel="attached"):
+    rows = cols if rows is None else rows
+    total = cols * rows
     composited = reference is not None and channel == "composited"
     if composited:
-        scene_img = band(im, reference, n)
+        scene_img = band(im, reference, cols, rows)
     else:
-        scene_img = overlay(im, n)
+        scene_img = overlay(im, cols, rows)
     buf = io.BytesIO()
     scene_img.save(buf, "PNG")
     url = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
-    text = f"A photograph divided into {n * n} labelled regions."
+    text = f"A photograph divided into {total} labelled regions."
     if composited:
         text = ("A reference subject in the band at the top, and below it a photograph "
-                f"divided into {n * n} labelled regions.")
+                f"divided into {total} labelled regions.")
     if hint:
         text += f" In the previous frame the subject was found in regions {hint}."
 
@@ -108,8 +111,8 @@ def scan(im, target, n=5, seed=7, hint=None, reference=None, channel="attached")
     conn = http.client.HTTPConnection(parsed.hostname, parsed.port or 80, timeout=300)
     probs = {}
     try:
-        for i in range(0, n * n, BATCH):
-            group = labels(n)[i : i + BATCH]
+        for i in range(0, total, BATCH):
+            group = labels(cols, rows)[i : i + BATCH]
             schema = {
                 "instructions": headline,
                 "samples": 1,
