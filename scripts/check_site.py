@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import re
@@ -36,7 +37,13 @@ if ex:
           f"{sum(len(c['channels']) for c in ex['scenes'].values())} channel runs")
 
 page = open(os.path.join(ROOT, "index.html")).read()
-assert 'src="data/results.js"' in page, "page does not load the cached results"
+m = re.search(r'src="data/results\.js\?v=([0-9a-f]+)"', page)
+assert m, "page must load the cached results with a version stamp"
+stamp = hashlib.sha1(json.dumps(data).encode()).hexdigest()[:8]
+assert m.group(1) == stamp, (
+    f"page asks for results.js?v={m.group(1)} but the data hashes to {stamp}; "
+    "run scripts/build_results.py"
+)
 if ex:
     assert 'id="match"' in page, "page has exemplar data but no match view"
 print(f"ok: {len(frames)} frames, {len(data['modes'])} modes, {data['n']}x{data['n']} grid")
