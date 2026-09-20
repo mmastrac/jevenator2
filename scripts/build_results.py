@@ -30,10 +30,6 @@ payload = {
         "wrong": [temporal["C_wrong"][n] for n in names],
     },
 }
-exemplar_path = os.path.join(DATA, "exemplar.json")
-if os.path.isfile(exemplar_path):
-    payload["exemplar"] = json.load(open(exemplar_path))
-
 body = json.dumps(payload)
 stamp = hashlib.sha1(body.encode()).hexdigest()[:8]
 

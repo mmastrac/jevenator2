@@ -57,9 +57,10 @@ viewer needs nothing.
 
 ## Reference matching
 
-The MATCH view matches a reference subject to a region, sending the reference
-two ways: `attached` as its own image part, `composited` into a band above the
-scene. The `shapes` scene is the control that the reference is used at all. In
+`scripts/scan_refs.py` matches a reference subject to a region, sending the
+reference two ways: `attached` as its own image part, `composited` into a band
+above the scene. Results are in `data/exemplar.json`; the page does not show
+them. The `shapes` scene is the control that the reference is used at all. In
 the `night` scene the expected regions are `CFI` for the boy and `DG` for the
 man in sunglasses; `dyson` is a face that is not in that scene, so its expected
 result is no region at all.

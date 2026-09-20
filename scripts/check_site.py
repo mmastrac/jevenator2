@@ -21,7 +21,8 @@ assert len(data["times"]) == len(frames), "timing count does not match frames"
 missing = [f for f in frames if not os.path.isfile(os.path.join(ROOT, "data", "frames", f))]
 assert not missing, f"missing frame files: {missing[:5]}"
 
-ex = data.get("exemplar")
+ex_path = os.path.join(ROOT, "data", "exemplar.json")
+ex = json.load(open(ex_path)) if os.path.isfile(ex_path) else None
 if ex:
     for scene, cfg in ex["scenes"].items():
         assert cfg["labels"] == regions.labels(cfg["n"]), f"{scene}: label set"
@@ -47,8 +48,4 @@ assert m.group(1) == stamp, (
     f"page asks for results.js?v={m.group(1)} but the data hashes to {stamp}; "
     "run scripts/build_results.py"
 )
-if ex:
-    assert 'id="match"' in page, "page has exemplar data but no match view"
-    assert 'id="mtargets"' in page, "match view has no target panel"
-    assert "mtab" not in page, "the match view's numeric grid should be gone"
 print(f"ok: {len(frames)} frames, {len(data['modes'])} modes, {data['n']}x{data['n']} grid")

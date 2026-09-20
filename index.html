@@ -13,9 +13,8 @@ font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 h1{font-size:18px;letter-spacing:.16em;margin:0 0 14px;color:var(--hot)}
 .wrap{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
 .panel{background:var(--panel);border:1px solid var(--line);padding:12px;border-radius:6px}
-#stage,#mstage{position:relative;line-height:0}
-#stage *,#mstage *{line-height:normal}
-#mstage img{display:block;width:100%;height:auto}
+#stage{position:relative;line-height:0}
+#stage *{line-height:normal}
 #stage img{display:block;width:100%;height:auto;
 filter:grayscale(1) sepia(1) saturate(6) hue-rotate(-24deg) contrast(1.15)}
 #scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(
@@ -36,29 +35,13 @@ button{cursor:pointer}button:hover{border-color:var(--hot)}
 input[type=range]{width:200px;accent-color:var(--hot)}
 .stat{color:var(--dim);font-size:12px}
 .stat b{color:var(--ink);font-weight:600}
-.tab{letter-spacing:.1em}
-.tab.on{background:var(--hot);color:#000;border-color:var(--hot);font-weight:700}
-#mrefs figure{margin:0 0 10px;display:flex;gap:10px;align-items:flex-start;
-cursor:pointer;border:1px solid var(--line);border-radius:4px;padding:7px;
-background:#1d0e0f}
-#mrefs figure:hover{border-color:var(--warm)}
-#mrefs .sel{border-color:var(--hot);background:#2a1414}
-#mrefs img{height:62px;width:auto;border-radius:3px;display:block;flex:0 0 auto}
-#mrefs figcaption{font-size:11px;color:var(--dim);line-height:1.35}
-#mrefs .nm{color:var(--ink);font-weight:600;display:block;margin-bottom:2px}
-#mrefs .res{display:block;margin-top:3px;font-size:10px;letter-spacing:.05em}
-.ok{color:#7fe08a}.bad{color:#ff7060}
 #live{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
 #err{color:#ff7060;font-size:12px;min-height:16px}
 </style>
 </head>
 <body>
 <h1>JEVENATOR 2 &mdash; JUDGMENT DAY</h1>
-<div class="row" style="margin:0 0 12px">
-  <button id="vTrack" class="tab on">TRACK</button>
-  <button id="vMatch" class="tab">MATCH</button>
-</div>
-<div class="wrap" id="track">
+<div class="wrap">
   <div class="panel" style="flex:1 1 430px;max-width:470px">
     <div id="stage">
       <img id="img" alt="">
@@ -99,28 +82,7 @@ background:#1d0e0f}
     <table id="tab"></table>
   </div>
 </div>
-<div class="wrap" id="match" hidden>
-  <div class="panel" style="flex:1 1 430px;max-width:470px">
-    <div id="mstage">
-      <img id="mimg" alt="">
-      <div id="mcells" style="position:absolute;inset:0;pointer-events:none"></div>
-      <div id="mbox" style="position:absolute;border:3px solid var(--hot);display:none"></div>
-    </div>
-    <div class="row">
-      <label class="stat">SCENE <select id="mscene"></select></label>
-      <label class="stat">CHANNEL <select id="mchan">
-        <option value="attached">attached</option>
-        <option value="composited">composited</option>
-      </select></label>
-    </div>
-    <div class="stat" id="mstats" style="margin-top:8px"></div>
-  </div>
-  <div class="panel" id="mtargets" style="flex:1 1 300px;max-width:360px">
-    <div class="stat" style="margin-bottom:8px">TARGET</div>
-    <div id="mrefs"></div>
-  </div>
-</div>
-<script src="data/results.js?v=b7aa76d3"></script>
+<script src="data/results.js?v=e6a7bc46"></script>
 <script>
 const D = window.RESULTS;
 const el = id => document.getElementById(id);
@@ -218,70 +180,6 @@ el("rescan").onclick = async () => {
   } catch (e) { el("err").textContent = String(e).slice(0, 200); }
   finally { el("rescan").disabled = false; }
 };
-const EX = D.exemplar;
-let mscene = Object.keys(EX.scenes)[0], mref = null;
-
-function mdraw() {
-  const cfg = EX.scenes[mscene], n = cfg.n, labs = cfg.labels;
-  const refs = cfg.channels[el("mchan").value];
-  if (!mref || !(mref in refs)) mref = Object.keys(refs)[0];
-  el("mimg").src = "data/scenes/" + mscene + ".jpg";
-  const holder = el("mcells");
-  holder.innerHTML = "";
-  const r = refs[mref], p = r.probs;
-  for (let k = 0; k < n * n; k++) {
-    const row = Math.floor(k / n), col = k % n, v = p[labs[k]], d = document.createElement("div");
-    d.style.cssText = `position:absolute;left:${100*col/n}%;top:${100*row/n}%;`
-      + `width:${100/n}%;height:${100/n}%;border:1px solid rgba(255,210,60,.2);`
-      + `background:rgba(255,60,40,${(v*0.62).toFixed(3)});font-size:10px;`
-      + `color:rgba(255,230,190,.9);padding:1px 3px`;
-    d.textContent = labs[k];
-    holder.appendChild(d);
-  }
-  el("mbox").style.display = "none";
-  for (const old of [...document.querySelectorAll(".gbox")]) old.remove();
-  (r.groups || []).forEach((g, gi) => {
-    const cells = [...g].map(c => labs.indexOf(c));
-    const rows = cells.map(c => Math.floor(c / n)), cols = cells.map(c => c % n);
-    const x0 = Math.min(...cols), y0 = Math.min(...rows);
-    const x1 = Math.max(...cols) + 1, y1 = Math.max(...rows) + 1;
-    const d = document.createElement("div");
-    d.className = "gbox";
-    d.style.cssText = `position:absolute;left:${100*x0/n}%;top:${100*y0/n}%;`
-      + `width:${100*(x1-x0)/n}%;height:${100*(y1-y0)/n}%;pointer-events:none;`
-      + `border:${gi ? "2px dashed rgba(255,210,60,.45)" : "3px solid var(--hot)"}`;
-    el("mstage").appendChild(d);
-  });
-
-  el("mrefs").innerHTML = "";
-  for (const name of Object.keys(refs)) {
-    const rr = refs[name], fig = document.createElement("figure");
-    fig.className = name === mref ? "sel" : "";
-    const desc = (cfg.descriptions && cfg.descriptions[name]) || "";
-    const want = rr.truth || "none", got = (rr.groups || []).join(" | ") || "none";
-    fig.innerHTML = `<img src="data/refs/${name}.jpg" alt="${name}">`
-      + `<figcaption><span class="nm">${name.replace(/_/g, " ")}</span>${desc}`
-      + `<span class="res ${rr.hit ? "ok" : "bad"}">${(rr.outcome || "").toUpperCase()}`
-      + ` &middot; found ${got} &middot; expected ${want}</span></figcaption>`;
-    fig.onclick = () => { mref = name; mdraw(); };
-    el("mrefs").appendChild(fig);
-  }
-  el("mstats").innerHTML = `${mscene.toUpperCase()} &middot; ${el("mchan").value.toUpperCase()}`
-    + ` &middot; ${EX.seeds.length} SEEDS, THR ${EX.threshold}`;
-}
-el("mscene").innerHTML = Object.keys(EX.scenes)
-  .map(k => `<option value="${k}">${k}</option>`).join("");
-el("mscene").onchange = e => { mscene = e.target.value; mref = null; mdraw(); };
-el("mchan").onchange = mdraw;
-function view(match) {
-  el("track").hidden = match; el("match").hidden = !match;
-  el("vTrack").classList.toggle("on", !match);
-  el("vMatch").classList.toggle("on", match);
-  if (match) mdraw();
-}
-el("vTrack").onclick = () => view(false);
-el("vMatch").onclick = () => view(true);
-
 layout(); draw();
 </script>
 </body>
